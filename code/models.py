@@ -1,4 +1,5 @@
 import os
+import re
 import argparse
 import numpy as np 
 import pickle as pl 
@@ -65,6 +66,11 @@ def build_graph(
     
     return dense, alphas_words, alphas_sents
 
+def visualize_sentence(sent):
+    ## remove the trailing 'UNK' symbols from sent
+    visual_sent = ' '.join(re.sub('UNK', '', sent).split()) 
+    return visual_sent
+
 if __name__=="__main__":
     parser = argparse.ArgumentParser(description='Parameters for building the model.')
     parser.add_argument('-b', '--batch_size', type=int, default=512,
@@ -126,9 +132,12 @@ if __name__=="__main__":
         sess.run(tf.global_variables_initializer())
         sess.run(tf.local_variables_initializer())
 #         insert this snippet to restore a model:
+        resume_from_epoch = 0
         if resume:
-            saver.restore(sess, tf.train.latest_checkpoint('../logs'))
-        for epoch in range(0, epochs):
+            latest_cpt_file = tf.train.latest_checkpoint('../logs')
+            resume_from_epoch = int(latest_cpt_file.split('-')[1])
+            saver.restore(sess, latest_cpt_file)
+        for epoch in range(resume_from_epoch, resume_from_epoch+epochs):
             avg_cost = 0.0
             print("epoch {}".format(epoch))
             for i in range(total_batch):
@@ -148,7 +157,7 @@ if __name__=="__main__":
         x_test = np.asarray(df_test['review'].tolist())
         y_test = df_test['label'].values.tolist()
         test_review_lens = df_test['length'].tolist()
-        test_batch_size = 50
+        test_batch_size = 1000
         total_batch2 = int(len(x_test)/(test_batch_size))
         avg_accu = 0.0
 
@@ -174,15 +183,25 @@ if __name__=="__main__":
         words = get_sentence(index2word, x_test_sample[0][3]).split()
 
         # visualize words in a sentence
-        with open(words_visual_file,  "w") as html_file:
-            for word, alpha in zip(words, alphas_words_test[3] / alphas_words_test[3].max()):
-                html_file.write('<font style="background: rgba(255, 255, 0, %f)">%s</font>\n' % (alpha, word))
+       # with open(words_visual_file,  "w") as html_file:
+        #    for word, alpha in zip(words, alphas_words_test[3] / alphas_words_test[3].max()):
+         #       html_file.write('<font style="background: rgba(255, 255, 0, %f)">%s</font>\n' % (alpha, word))
 
         # visualize sentences in a review
         sents = [get_sentence(index2word, x_test_sample[0][i]) for i in range(max_rev_length)]
+        index_sent = 0
         with open(sents_visual_file, "w") as html_file:
             for sent, alpha in zip(sents, alphas_sents_test[0] / alphas_sents_test[0].max()):
                 if len(set(sent.split(' '))) == 1:
+                    index_sent += 1
                     continue  
-                visual_sent = sent
-                html_file.write('<font style="background: rgba(255, 0, 0, %f)">&nbsp&nbsp&nbsp&nbsp&nbsp</font>%s<br>' % (alpha, visual_sent))
+                visual_sent = visualize_sentence(sent)
+                # display each sent's importance by color
+                html_file.write('<font style="background: rgba(255, 0, 0, %f)">&nbsp&nbsp&nbsp&nbsp&nbsp</font>' % (alpha))
+                visual_words = visual_sent.split()
+                visual_words = sent.split() 
+                # for each sent, display its word importance by color
+                for word, alpha_w in zip(visual_words, alphas_words_test[index_sent] / alphas_words_test[index_sent].max()):
+                    html_file.write('<font style="background: rgba(255, 255, 0, %f)">%s </font>' % (alpha_w, word))
+                html_file.write('<br>')
+                index_sent += 1
