@@ -10,7 +10,7 @@ from tensorflow.contrib.keras import preprocessing
 
 def build_emb_matrix_and_vocab(embedding_model, keep_in_dict=10000, embedding_size=100):
     # 0 th element is the default vector for unknowns.
-    emb_matrix = np.zeros((keep_in_dict+1, embedding_size))
+    emb_matrix = np.zeros((keep_in_dict+2, embedding_size))
     word2index = {}
     index2word = {}
     for k in  range(1, keep_in_dict+1):
@@ -20,6 +20,8 @@ def build_emb_matrix_and_vocab(embedding_model, keep_in_dict=10000, embedding_si
         index2word[k] = word
     word2index['UNK'] = 0
     index2word[0] = 'UNK'
+    word2index['STOP'] = keep_in_dict+1 
+    index2word[keep_in_dict+1] = 'STOP'
     return emb_matrix, word2index, index2word
 
 def sent2index(sent, word2index):
@@ -43,18 +45,19 @@ def gen_data(data_dir, word2index):
             data.append(sents_index)
     return data
 
-def preprocess_review(data, sent_length, max_rev_len):
+def preprocess_review(data, sent_length, max_rev_len, keep_in_dict=10000):
     ## As the result, each review will be composed of max_rev_len sentences. If the original review is longer than that, we truncate it, and if shorter than that, we append empty sentences to it. And each sentence will be composed of sent_length words. If the original sentence is longer than that, we truncate it, and if shorter, we append the word of 'UNK' to it. Also, we keep track of the actual number of sentences each review contains.
     data_formatted = []
     review_lens = []
     for review in data:
-        review_formatted = preprocessing.sequence.pad_sequences(review, maxlen=sent_length, padding="post", truncating="post")
+        review_formatted = preprocessing.sequence.pad_sequences(review, maxlen=sent_length, padding="post", truncating="post", value=keep_in_dict+1)
         review_len = review_formatted.shape[0]
         review_lens.append(review_len if review_len<=max_rev_len else max_rev_len)
         lack_len = max_rev_length - review_len
         review_formatted_right_len = review_formatted
         if lack_len > 0:
-            extra_rows = np.zeros([lack_len, sent_length], dtype=np.int32)
+            #extra_rows = np.zeros([lack_len, sent_length], dtype=np.int32)
+            extra_rows = np.full((lack_len, sent_length), keep_in_dict+1)
             review_formatted_right_len = np.append(review_formatted, extra_rows, axis=0)
         elif lack_len < 0:
             row_index = [max_rev_length+i for i in list(range(0, -lack_len))]

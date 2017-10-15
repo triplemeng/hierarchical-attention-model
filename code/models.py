@@ -67,8 +67,8 @@ def build_graph(
     return dense, alphas_words, alphas_sents
 
 def visualize_sentence(sent):
-    ## remove the trailing 'UNK' symbols from sent
-    visual_sent = ' '.join(re.sub('UNK', '', sent).split()) 
+    ## remove the trailing 'STOP' symbols from sent
+    visual_sent = ' '.join(re.sub('STOP', '', sent).split()) 
     return visual_sent
 
 if __name__=="__main__":
@@ -135,7 +135,9 @@ if __name__=="__main__":
         resume_from_epoch = 0
         if resume:
             latest_cpt_file = tf.train.latest_checkpoint('../logs')
-            resume_from_epoch = int(latest_cpt_file.split('-')[1])
+            print("the code pick up from lateset checkpoint file: {}".format(latest_cpt_file))
+            resume_from_epoch = int(str(latest_cpt_file).split('-')[1])
+            print("it resumes from prevous epoch of {}".format(resume_from_epoch))
             saver.restore(sess, latest_cpt_file)
         for epoch in range(resume_from_epoch, resume_from_epoch+epochs):
             avg_cost = 0.0
@@ -161,8 +163,7 @@ if __name__=="__main__":
         total_batch2 = int(len(x_test)/(test_batch_size))
         avg_accu = 0.0
 
-        #for i in range(total_batch2):
-        for i in range(1):
+        for i in range(total_batch2):
             batch_x = x_test[i*test_batch_size:(i+1)*test_batch_size]
             batch_y = y_test[i*test_batch_size:(i+1)*test_batch_size]
             batch_seqlen = test_review_lens[i*test_batch_size:(i+1)*test_batch_size]
@@ -177,19 +178,15 @@ if __name__=="__main__":
         print("prediction accuracy on test set is {}".format(avg_accu))
 
         # visualization
-
-        x_test_sample = x_test[0:1]
+        visual_sample_index = 180
+        x_test_sample = x_test[visual_sample_index:visual_sample_index+1]
         alphas_words_test, alphas_sents_test = sess.run([alphas_words, alphas_sents], feed_dict={inputs:x_test_sample, revlens: [max_rev_length]}) 
-        words = get_sentence(index2word, x_test_sample[0][3]).split()
+        print(alphas_words_test.shape)
 
-        # visualize words in a sentence
-       # with open(words_visual_file,  "w") as html_file:
-        #    for word, alpha in zip(words, alphas_words_test[3] / alphas_words_test[3].max()):
-         #       html_file.write('<font style="background: rgba(255, 255, 0, %f)">%s</font>\n' % (alpha, word))
-
-        # visualize sentences in a review
+        # visualize a review
         sents = [get_sentence(index2word, x_test_sample[0][i]) for i in range(max_rev_length)]
         index_sent = 0
+        print("sents size is {}".format(len(sents)))
         with open(sents_visual_file, "w") as html_file:
             for sent, alpha in zip(sents, alphas_sents_test[0] / alphas_sents_test[0].max()):
                 if len(set(sent.split(' '))) == 1:
@@ -199,9 +196,9 @@ if __name__=="__main__":
                 # display each sent's importance by color
                 html_file.write('<font style="background: rgba(255, 0, 0, %f)">&nbsp&nbsp&nbsp&nbsp&nbsp</font>' % (alpha))
                 visual_words = visual_sent.split()
-                visual_words = sent.split() 
+                visual_words_alphas = alphas_words_test[index_sent][:len(visual_words)]
                 # for each sent, display its word importance by color
-                for word, alpha_w in zip(visual_words, alphas_words_test[index_sent] / alphas_words_test[index_sent].max()):
+                for word, alpha_w in zip(visual_words, visual_words_alphas / visual_words_alphas.max()):
                     html_file.write('<font style="background: rgba(255, 255, 0, %f)">%s </font>' % (alpha_w, word))
                 html_file.write('<br>')
                 index_sent += 1
