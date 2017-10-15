@@ -34,6 +34,9 @@ class BucketedDataIterator():
         self.cursor[i] += n
         return np.asarray(res['review'].tolist()), res['label'].tolist(), res['length'].tolist()
 
+def get_sentence(vocabulary_inv, sen_index):
+    return ' '.join([vocabulary_inv[index] for index in sen_index])
+
 def sequence(rnn_inputs, hidden_size, seq_lens):
     cell_fw = tf.nn.rnn_cell.GRUCell(hidden_size)
     print('build fw cell: '+str(cell_fw))

@@ -1,6 +1,7 @@
 import os, re
 import argparse
 import numpy as np
+import pickle as pl
 from os import walk
 from gensim.models import Word2Vec
 from nltk.tokenize import RegexpTokenizer
@@ -106,7 +107,8 @@ if __name__ == "__main__":
 
     print("save word embedding matrix ...")
     emb_filename = os.path.join(working_dir, "emb_matrix")
-    emb_matrix.dump(emb_filename)
+    #emb_matrix.dump(emb_filename)
+    pl.dump([emb_matrix, word2index, index2word], open(emb_filename, "wb")) 
 
     print("save review data for training...")
     df_train = pd.DataFrame({'review':x_train, 'label':y_train, 'length':train_review_lens})

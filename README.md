@@ -15,8 +15,16 @@ It will download the raw imdb data and uncompress it to ./data/aclImdb folder wi
 2. pretrain word embeddings
 I've tried both training word embeddings in a supervised fashion and in an unsupervised(pretaining) fashion. The former took more computational resources and also prone to overfitting. 
 
-under code subdirectory, run
+cd ./code
 python gen_word_embeddings.py
 (By default, the embedding size is 100.)
 
-3. preprocess reviews
+3. preprocess reviews 
+Preprocess reviews: each review will be composed of max_rev_len sentences. If the original review is longer than that, we truncate it, and if shorter than that, we append empty sentences to it. And each sentence will be composed of sent_length words. If the original sentence is longer than that, we truncate it, and if shorter, we append the word of 'UNK' to it. Also, we keep track of the actual number of sentences each review contains.
+
+python preprocess_reviews.py --sent_length 70 --max_rev_length 15
+
+4. run the model
+Train the model and evaluate it on the test set.
+
+python models.py -b 512
