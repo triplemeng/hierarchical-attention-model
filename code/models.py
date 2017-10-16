@@ -10,6 +10,7 @@ from components import sequence, attention, BucketedDataIterator, get_sentence
 def build_graph(
     inputs,
     revlens,
+    keep_prob,
     hidden_size = 64,
     atten_size = 50,
     nclasses = 2,
@@ -40,7 +41,8 @@ def build_graph(
         
     atten_inputs = tf.concat(word_rnn_outputs, 2)
     combined_hidden_size = int(atten_inputs.shape[2])
-    
+
+    atten_inputs = tf.nn.dropout(atten_inputs, keep_prob)
     with tf.variable_scope("word_atten"):
         sent_outs, alphas_words = attention(atten_inputs, atten_size)
     
@@ -54,6 +56,7 @@ def build_graph(
     
     # attention at sentence level:
     sent_atten_inputs = tf.concat(sent_rnn_outputs, 2)
+    sent_atten_inputs = tf.nn.dropout(sent_atten_inputs, keep_prob)
     
     with tf.variable_scope("sent_atten"):
         rev_outs, alphas_sents = attention(sent_atten_inputs, atten_size)
@@ -106,7 +109,9 @@ if __name__=="__main__":
     y_ = tf.placeholder(tf.int32, shape=[None, nclasses])
     inputs = tf.placeholder(tf.int32, [None, max_rev_length, sent_length])
     revlens = tf.placeholder(tf.int32, [None])
-    dense, alphas_words, alphas_sents =build_graph(inputs, revlens, embeddings=emb_matrix, nclasses=nclasses)
+    keep_prob = tf.placeholder(tf.float32)
+
+    dense, alphas_words, alphas_sents = build_graph(inputs, revlens, keep_prob, embeddings=emb_matrix, nclasses=nclasses)
     cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=y_, logits=dense))
     with tf.variable_scope('optimizers', reuse=None):
         optimizer = tf.train.AdamOptimizer(0.01).minimize(cross_entropy)
@@ -139,7 +144,7 @@ if __name__=="__main__":
             resume_from_epoch = int(str(latest_cpt_file).split('-')[1])
             print("it resumes from prevous epoch of {}".format(resume_from_epoch))
             saver.restore(sess, latest_cpt_file)
-        for epoch in range(resume_from_epoch, resume_from_epoch+epochs):
+        for epoch in range(resume_from_epoch+1, resume_from_epoch+epochs+1):
             avg_cost = 0.0
             print("epoch {}".format(epoch))
             for i in range(total_batch):
@@ -147,7 +152,7 @@ if __name__=="__main__":
                 batch_label_formatted = tf.one_hot(indices=batch_label, depth=depth, on_value=on_value, off_value=off_value, axis=-1)
         
                 batch_labels = sess.run(batch_label_formatted)
-                feed = {inputs: batch_data, revlens: seqlens, y_: batch_labels}
+                feed = {inputs: batch_data, revlens: seqlens, y_: batch_labels, keep_prob: 0.9}
                 _, c, summary_in_batch_train = sess.run([optimizer, cross_entropy, summary_op], feed_dict=feed)
                 avg_cost += c/total_batch
                 train_writer.add_summary(summary_in_batch_train, epoch*total_batch + i)
@@ -171,7 +176,7 @@ if __name__=="__main__":
             batch_label_formatted2 =tf.one_hot(indices=batch_y, depth=depth, on_value=on_value, off_value=off_value, axis=-1)
     
             batch_labels2 = sess.run(batch_label_formatted2)
-            feed = {inputs: batch_x, revlens: batch_seqlen, y_: batch_labels2}
+            feed = {inputs: batch_x, revlens: batch_seqlen, y_: batch_labels2, keep_prob: 1.0}
             accu  = sess.run(accuracy, feed_dict=feed)
             avg_accu += accu/total_batch2
 
@@ -180,7 +185,7 @@ if __name__=="__main__":
         # visualization
         visual_sample_index = 180
         x_test_sample = x_test[visual_sample_index:visual_sample_index+1]
-        alphas_words_test, alphas_sents_test = sess.run([alphas_words, alphas_sents], feed_dict={inputs:x_test_sample, revlens: [max_rev_length]}) 
+        alphas_words_test, alphas_sents_test = sess.run([alphas_words, alphas_sents], feed_dict={inputs:x_test_sample, revlens: [max_rev_length], keep_prob: 1.0}) 
         print(alphas_words_test.shape)
 
         # visualize a review

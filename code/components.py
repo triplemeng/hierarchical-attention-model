@@ -46,11 +46,11 @@ def sequence(rnn_inputs, hidden_size, seq_lens):
                                                                cell_bw, 
                                                                inputs=rnn_inputs, 
                                                                sequence_length=seq_lens,
-                                                               dtype=tf.float32,
+                                                               dtype=tf.float32
                                                                )
     print('rnn outputs: '+str(rnn_outputs))   
     print('final state: '+str(final_state))
-    
+   
     return rnn_outputs
    
 def attention(atten_inputs, atten_size):
