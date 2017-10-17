@@ -89,7 +89,7 @@ if __name__=="__main__":
     epochs = args.epochs
 
     working_dir = "../data/aclImdb"
-    visual_dir = "../data/visualization"
+    visual_dir = "../visualization"
     log_dir = "../logs"
     train_filename = os.path.join(working_dir, "train_df_file")
     test_filename = os.path.join(working_dir, "test_df_file")

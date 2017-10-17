@@ -43,11 +43,14 @@ Train the model and evaluate it on the test set.
 
 Note:
    if you just want to build the model and evaluate it, you can just run it in the default mode:
+   
    python models.py
 
    if you want to pick up latetest check point and resume the computation:
+   
    python models.py -r True -e 5
    (-e 5 means another 5 more epochs after the check point)
 
    if you only want to use the latest check point to do the evaluation:
+   
    python models.py -r True -e 0
