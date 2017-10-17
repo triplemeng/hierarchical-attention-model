@@ -19,7 +19,7 @@ I've tried both training word embeddings in a supervised fashion and in an unsup
 
     cd ./code
     python gen_word_embeddings.py
-    (By default, the embedding size is 100.)
+    (By default, the embedding size is 50.)
 
 3. preprocess reviews
 
@@ -31,10 +31,23 @@ Any words that are not included in the dictionary are makred as "UNK", and the i
 
 4. run the model
 
-    Train the model and evaluate it on the test set.
+Train the model and evaluate it on the test set.
+    
+    python models.py
 
-    python models.py -b 512
+    --batch_size batch size (default 512)
 
-    --batch_size batch size
     --resume pick up latest checkpoint and resume running
-    --epoches epoches
+
+    --epoches epoches (default 10)
+
+Note:
+   if you just want to build the model and evaluate it, you can just run it in the default mode:
+   python models.py
+
+   if you want to pick up latetest check point and resume the computation:
+   python models.py -r True -e 5
+   (-e 5 means another 5 more epochs after the check point)
+
+   if you only want to use the latest check point to do the evaluation:
+   python models.py -r True -e 0

@@ -29,7 +29,7 @@ if __name__ == "__main__":
     test2 = gen_formatted_review(test_neg_dir)
     test.extend(test2)
     train.extend(test)
-    embedding_size = 100
+    embedding_size = 50
     fname = os.path.join(working_dir, "imdb_embedding")
     if os.path.isfile(fname):
         embedding_model = Word2Vec.load(fname)

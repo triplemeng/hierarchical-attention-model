@@ -8,7 +8,7 @@ from nltk.tokenize import RegexpTokenizer
 import pandas as pd
 from tensorflow.contrib.keras import preprocessing
 
-def build_emb_matrix_and_vocab(embedding_model, keep_in_dict=10000, embedding_size=100):
+def build_emb_matrix_and_vocab(embedding_model, keep_in_dict=10000, embedding_size=50):
     # 0 th element is the default vector for unknowns.
     emb_matrix = np.zeros((keep_in_dict+2, embedding_size))
     word2index = {}

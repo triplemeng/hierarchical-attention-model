@@ -10,8 +10,8 @@ from components import sequence, attention, BucketedDataIterator, get_sentence
 def build_graph(
     inputs,
     revlens,
-    keep_prob,
-    hidden_size = 64,
+    keep_probs,
+    hidden_size = 50,
     atten_size = 50,
     nclasses = 2,
     embeddings = None
@@ -42,7 +42,7 @@ def build_graph(
     atten_inputs = tf.concat(word_rnn_outputs, 2)
     combined_hidden_size = int(atten_inputs.shape[2])
 
-    atten_inputs = tf.nn.dropout(atten_inputs, keep_prob)
+    atten_inputs = tf.nn.dropout(atten_inputs, keep_probs[0])
     with tf.variable_scope("word_atten"):
         sent_outs, alphas_words = attention(atten_inputs, atten_size)
     
@@ -56,7 +56,7 @@ def build_graph(
     
     # attention at sentence level:
     sent_atten_inputs = tf.concat(sent_rnn_outputs, 2)
-    sent_atten_inputs = tf.nn.dropout(sent_atten_inputs, keep_prob)
+    sent_atten_inputs = tf.nn.dropout(sent_atten_inputs, keep_probs[1])
     
     with tf.variable_scope("sent_atten"):
         rev_outs, alphas_sents = attention(sent_atten_inputs, atten_size)
@@ -103,15 +103,13 @@ if __name__=="__main__":
     print("load embedding matrix...")
     (emb_matrix, word2index, index2word) = pl.load(open(emb_filename, "rb"))
 
-    words_visual_file = os.path.join(visual_dir, "words_in_sentence_visualization.html")
-    sents_visual_file = os.path.join(visual_dir, "sents_in_review_visualization.html")
     nclasses = 2
     y_ = tf.placeholder(tf.int32, shape=[None, nclasses])
     inputs = tf.placeholder(tf.int32, [None, max_rev_length, sent_length])
     revlens = tf.placeholder(tf.int32, [None])
-    keep_prob = tf.placeholder(tf.float32)
+    keep_probs = tf.placeholder(tf.float32, [2])
 
-    dense, alphas_words, alphas_sents = build_graph(inputs, revlens, keep_prob, embeddings=emb_matrix, nclasses=nclasses)
+    dense, alphas_words, alphas_sents = build_graph(inputs, revlens, keep_probs, embeddings=emb_matrix, nclasses=nclasses)
     cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=y_, logits=dense))
     with tf.variable_scope('optimizers', reuse=None):
         optimizer = tf.train.AdamOptimizer(0.01).minimize(cross_entropy)
@@ -125,7 +123,7 @@ if __name__=="__main__":
 
     total_batch = int(len(df_train)/(train_batch_size))
 
-    num_buckets = 4
+    num_buckets = 3
     data = BucketedDataIterator(df_train, num_buckets)
 
     depth = nclasses
@@ -137,12 +135,12 @@ if __name__=="__main__":
         sess.run(tf.global_variables_initializer())
         sess.run(tf.local_variables_initializer())
 #         insert this snippet to restore a model:
-        resume_from_epoch = 0
+        resume_from_epoch = -1 
         if resume:
             latest_cpt_file = tf.train.latest_checkpoint('../logs')
             print("the code pick up from lateset checkpoint file: {}".format(latest_cpt_file))
             resume_from_epoch = int(str(latest_cpt_file).split('-')[1])
-            print("it resumes from prevous epoch of {}".format(resume_from_epoch))
+            print("it resumes from previous epoch of {}".format(resume_from_epoch))
             saver.restore(sess, latest_cpt_file)
         for epoch in range(resume_from_epoch+1, resume_from_epoch+epochs+1):
             avg_cost = 0.0
@@ -152,7 +150,7 @@ if __name__=="__main__":
                 batch_label_formatted = tf.one_hot(indices=batch_label, depth=depth, on_value=on_value, off_value=off_value, axis=-1)
         
                 batch_labels = sess.run(batch_label_formatted)
-                feed = {inputs: batch_data, revlens: seqlens, y_: batch_labels, keep_prob: 0.9}
+                feed = {inputs: batch_data, revlens: seqlens, y_: batch_labels, keep_probs: [0.9, 0.9]}
                 _, c, summary_in_batch_train = sess.run([optimizer, cross_entropy, summary_op], feed_dict=feed)
                 avg_cost += c/total_batch
                 train_writer.add_summary(summary_in_batch_train, epoch*total_batch + i)
@@ -176,16 +174,22 @@ if __name__=="__main__":
             batch_label_formatted2 =tf.one_hot(indices=batch_y, depth=depth, on_value=on_value, off_value=off_value, axis=-1)
     
             batch_labels2 = sess.run(batch_label_formatted2)
-            feed = {inputs: batch_x, revlens: batch_seqlen, y_: batch_labels2, keep_prob: 1.0}
+            feed = {inputs: batch_x, revlens: batch_seqlen, y_: batch_labels2, keep_probs: [1.0, 1.0]}
             accu  = sess.run(accuracy, feed_dict=feed)
             avg_accu += accu/total_batch2
 
         print("prediction accuracy on test set is {}".format(avg_accu))
 
         # visualization
-        visual_sample_index = 180
+        visual_sample_index = 100
+        sents_visual_file = os.path.join(visual_dir, "sents_in_review_visualization_{}.html".format(visual_sample_index))
         x_test_sample = x_test[visual_sample_index:visual_sample_index+1]
-        alphas_words_test, alphas_sents_test = sess.run([alphas_words, alphas_sents], feed_dict={inputs:x_test_sample, revlens: [max_rev_length], keep_prob: 1.0}) 
+        y_test_sample = y_test[visual_sample_index:visual_sample_index+1]
+        test_dict = {inputs:x_test_sample, revlens: [max_rev_length], keep_probs: [1.0, 1.0]}
+        alphas_words_test, alphas_sents_test = sess.run([alphas_words, alphas_sents], feed_dict=test_dict) 
+        y_test_predict = sess.run(y_predict, feed_dict=test_dict)
+        print("test sample is {}".format(y_test_sample[0]))
+        print("test sample is predicted as {}".format(y_test_predict[0]))
         print(alphas_words_test.shape)
 
         # visualize a review
@@ -193,6 +197,7 @@ if __name__=="__main__":
         index_sent = 0
         print("sents size is {}".format(len(sents)))
         with open(sents_visual_file, "w") as html_file:
+            html_file.write('actual label: %f, predicted label: %f<br>' % (y_test_sample[0], y_test_predict[0]))
             for sent, alpha in zip(sents, alphas_sents_test[0] / alphas_sents_test[0].max()):
                 if len(set(sent.split(' '))) == 1:
                     index_sent += 1
