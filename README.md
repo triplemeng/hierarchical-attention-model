@@ -54,3 +54,7 @@ Note:
    if you only want to use the latest check point to do the evaluation:
    
    python models.py -r True -e 0
+
+5. visualization
+
+The visualization module is embeded in models.py. A few examples are contained in the visualization folder. Use any html reader to display the results.
