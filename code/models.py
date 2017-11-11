@@ -161,8 +161,8 @@ if __name__=="__main__":
         total_batch2 = int(len(x_test)/(test_batch_size))
         avg_accu = 0.0
 
-        #for i in range(total_batch2):
-        for i in range(0):
+        for i in range(total_batch2):
+        #for i in range(0):
             batch_x = x_test[i*test_batch_size:(i+1)*test_batch_size]
             batch_y = y_test[i*test_batch_size:(i+1)*test_batch_size]
             batch_seqlen = test_review_lens[i*test_batch_size:(i+1)*test_batch_size]
@@ -172,7 +172,7 @@ if __name__=="__main__":
             batch_labels2 = sess.run(batch_label_formatted2)
             feed = {inputs: batch_x, revlens: batch_seqlen, y_: batch_labels2, keep_probs: [1.0, 1.0]}
             accu  = sess.run(accuracy, feed_dict=feed)
-            avg_accu += accu/total_batch2
+            avg_accu += 1.0*accu/total_batch2
 
         print("prediction accuracy on test set is {}".format(avg_accu))
         visual_sample_index = 99
